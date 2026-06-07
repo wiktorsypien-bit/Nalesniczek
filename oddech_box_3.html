@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Box Breathing — dla Kasi</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #080c12;
+    color: #e8eef5;
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  #breathScreen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .title {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-weight: 300;
+    font-size: 14px;
+    color: #2e4560;
+    letter-spacing: 2px;
+    margin-bottom: 52px;
+    animation: fadeIn 1s ease 0.3s both;
+  }
+
+  .box-wrap {
+    position: relative;
+    width: 240px;
+    height: 240px;
+    animation: fadeIn 1s ease 0.6s both;
+  }
+
+  canvas { position: absolute; inset: 0; }
+
+  .side-label {
+    position: absolute;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #2e4560;
+    transition: color 0.3s ease;
+    font-weight: 300;
+  }
+  .side-label.active { color: #6ab4f5; }
+  .side-label.top    { top: -24px; left: 50%; transform: translateX(-50%); }
+  .side-label.right  { right: -68px; top: 50%; transform: translateY(-50%); }
+  .side-label.bottom { bottom: -24px; left: 50%; transform: translateX(-50%); }
+  .side-label.left   { left: -72px; top: 50%; transform: translateY(-50%); }
+
+  .center-info {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+
+  .count {
+    font-size: 48px;
+    font-weight: 300;
+    color: #e8eef5;
+    line-height: 1;
+    font-family: 'Cormorant Garamond', serif;
+  }
+
+  .phase-word {
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: #6ab4f5;
+    text-transform: uppercase;
+    margin-top: 6px;
+    min-height: 16px;
+  }
+
+  .rounds {
+    display: flex;
+    gap: 10px;
+    margin-top: 52px;
+    animation: fadeIn 1s ease 0.9s both;
+  }
+
+  .dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: #1e2d40;
+    transition: background 0.4s ease, transform 0.4s ease;
+  }
+  .dot.done { background: #6ab4f5; transform: scale(1.3); }
+
+  .btn {
+    margin-top: 44px;
+    background: transparent;
+    border: 1px solid rgba(106,180,245,0.2);
+    color: #6ab4f5;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    padding: 13px 36px;
+    border-radius: 40px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.25s ease;
+    animation: fadeIn 1s ease 1.1s both;
+  }
+  .btn:hover { background: rgba(106,180,245,0.05); border-color: #6ab4f5; }
+  .btn:active { transform: scale(0.97); }
+
+  /* NOTE SCREEN */
+  #noteScreen {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: #080c12;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 48px 36px;
+    z-index: 50;
+  }
+  #noteScreen.show { display: flex; animation: fadeIn 0.8s ease forwards; }
+
+  .note-round {
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: #2e4560;
+    text-transform: uppercase;
+    margin-bottom: 36px;
+  }
+
+  .note-text {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(22px, 6vw, 34px);
+    font-weight: 300;
+    font-style: italic;
+    line-height: 1.7;
+    color: #c8d8e8;
+    max-width: 340px;
+  }
+  .note-text strong {
+    color: #e8eef5;
+    font-style: normal;
+    font-weight: 400;
+  }
+
+  .note-author {
+    margin-top: 28px;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: #2e4560;
+    text-transform: uppercase;
+  }
+
+  .note-btn {
+    margin-top: 52px;
+    background: transparent;
+    border: 1px solid rgba(106,180,245,0.2);
+    color: #6ab4f5;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    padding: 13px 36px;
+    border-radius: 40px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.25s ease;
+  }
+  .note-btn:hover { background: rgba(106,180,245,0.05); border-color: #6ab4f5; }
+  .note-btn.last { border-color: rgba(212,149,106,0.3); color: #d4956a; }
+  .note-btn.last:hover { background: rgba(212,149,106,0.05); border-color: #d4956a; }
+
+  /* FINAL SCREEN */
+  #finalScreen {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: #080c12;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 40px;
+    z-index: 100;
+  }
+  #finalScreen.show { display: flex; animation: fadeIn 1s ease forwards; }
+  #finalScreen .emoji { font-size: 48px; margin-bottom: 28px; }
+  #finalScreen h2 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 40px;
+    font-weight: 300;
+    font-style: italic;
+    margin-bottom: 16px;
+  }
+  #finalScreen p {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 18px;
+    font-weight: 300;
+    font-style: italic;
+    color: #3a5070;
+    line-height: 1.9;
+  }
+  #finalScreen .btn { animation: none; opacity: 1; margin-top: 44px; }
+
+  @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+</style>
+</head>
+<body>
+
+<div id="breathScreen">
+  <div class="title">box breathing</div>
+  <div class="box-wrap">
+    <canvas id="cv" width="240" height="240"></canvas>
+    <div class="side-label top"    id="lTop">wdech</div>
+    <div class="side-label right"  id="lRight">zatrzymaj</div>
+    <div class="side-label bottom" id="lBottom">wydech</div>
+    <div class="side-label left"   id="lLeft">czekaj</div>
+    <div class="center-info">
+      <div class="count" id="count">4</div>
+      <div class="phase-word" id="phaseWord"></div>
+    </div>
+  </div>
+  <div class="rounds" id="rounds">
+    <div class="dot" id="d0"></div>
+    <div class="dot" id="d1"></div>
+    <div class="dot" id="d2"></div>
+    <div class="dot" id="d3"></div>
+    <div class="dot" id="d4"></div>
+  </div>
+  <button class="btn" id="btn">start</button>
+</div>
+
+<div id="noteScreen">
+  <div class="note-round" id="noteRound"></div>
+  <div class="note-text"  id="noteText"></div>
+  <div class="note-author">— Wiktor ❤️</div>
+  <button class="note-btn" id="noteBtn"></button>
+</div>
+
+<div id="finalScreen">
+  <div class="emoji">🌙</div>
+  <h2>Gotowa, Kasiu.</h2>
+  <p>Oddech złapany.<br>Głowa czysta.<br><br>Teraz idź i pokaż im<br>na co Cię stać.</p>
+  <button class="btn" id="restartBtn">jeszcze raz</button>
+</div>
+
+<script>
+const NOTES = [
+  `❤️ Pierwszy oddech za Tobą.<br><strong>Jesteś piękniejsza i wspanialsza</strong> niż myślisz. ❤️`,
+  `❤️ Widzę jak się starasz być najlepsza.<br><strong>Bardzo Ci to wychodzi.</strong> ❤️`,
+  `❤️ Połowa zrobiona.<br>Czujesz to? Mózg Ci <strong>odpoczywa.</strong> ❤️`,
+  `❤️ Prawie gotowe.<br>Jesteś <strong>silniejsza</strong> niż cokolwiek. ❤️`,
+  `❤️ Pięć oddechów.<br>Teraz już wiesz —<br><strong>dasz radę. Myślę o Tobie.</strong> ❤️`,
+];
+
+const canvas = document.getElementById('cv');
+const ctx = canvas.getContext('2d');
+const W = 240, PAD = 30, SIDE = W - PAD*2;
+const CORNERS = [
+  {x:PAD,      y:PAD},
+  {x:PAD+SIDE, y:PAD},
+  {x:PAD+SIDE, y:PAD+SIDE},
+  {x:PAD,      y:PAD+SIDE}
+];
+const PHASES = [
+  {name:'wdech',     dur:4},
+  {name:'zatrzymaj', dur:4},
+  {name:'wydech',    dur:4},
+  {name:'czekaj',    dur:4},
+];
+const LABELS = ['lTop','lRight','lBottom','lLeft'];
+const TOTAL = 5;
+
+let running=false, phase=0, round=0, phaseStart=null, raf=null;
+
+function lerp(t,a,b){return{x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t};}
+
+function drawBox(dx,dy,prog,pi){
+  ctx.clearRect(0,0,W,W);
+  for(let i=0;i<4;i++){
+    const f=CORNERS[i],t=CORNERS[(i+1)%4];
+    if(i===pi){
+      ctx.beginPath();ctx.moveTo(f.x,f.y);ctx.lineTo(t.x,t.y);
+      ctx.strokeStyle='rgba(106,180,245,0.1)';ctx.lineWidth=1;ctx.stroke();
+      const m=lerp(prog,f,t);
+      ctx.beginPath();ctx.moveTo(f.x,f.y);ctx.lineTo(m.x,m.y);
+      ctx.strokeStyle='#6ab4f5';ctx.lineWidth=1.5;
+      ctx.shadowColor='#6ab4f5';ctx.shadowBlur=8;ctx.stroke();ctx.shadowBlur=0;
+    } else if(i<pi){
+      ctx.beginPath();ctx.moveTo(f.x,f.y);ctx.lineTo(t.x,t.y);
+      ctx.strokeStyle='rgba(106,180,245,0.3)';ctx.lineWidth=1;ctx.stroke();
+    } else {
+      ctx.beginPath();ctx.moveTo(f.x,f.y);ctx.lineTo(t.x,t.y);
+      ctx.strokeStyle='rgba(106,180,245,0.08)';ctx.lineWidth=1;ctx.stroke();
+    }
+  }
+  CORNERS.forEach((c,i)=>{
+    ctx.beginPath();ctx.arc(c.x,c.y,3,0,Math.PI*2);
+    ctx.fillStyle=i<=pi?'rgba(106,180,245,0.5)':'rgba(106,180,245,0.12)';
+    ctx.fill();
+  });
+  ctx.beginPath();ctx.arc(dx,dy,7,0,Math.PI*2);
+  ctx.fillStyle='rgba(106,180,245,0.12)';ctx.fill();
+  ctx.beginPath();ctx.arc(dx,dy,5,0,Math.PI*2);
+  ctx.fillStyle='#6ab4f5';ctx.shadowColor='#6ab4f5';ctx.shadowBlur=16;ctx.fill();ctx.shadowBlur=0;
+}
+
+function setLabels(idx){LABELS.forEach((id,i)=>document.getElementById(id).classList.toggle('active',i===idx));}
+function updateDots(r){for(let i=0;i<TOTAL;i++)document.getElementById('d'+i).classList.toggle('done',i<r);}
+
+function showNote(r){
+  const ns=document.getElementById('noteScreen');
+  document.getElementById('noteRound').textContent=`oddech ${r} z ${TOTAL}`;
+  document.getElementById('noteText').innerHTML=NOTES[r-1];
+  const nb=document.getElementById('noteBtn');
+  if(r===TOTAL){
+    nb.textContent='gotowe ✓';
+    nb.className='note-btn last';
+    nb.onclick=()=>{ns.classList.remove('show');document.getElementById('finalScreen').classList.add('show');};
+  } else {
+    nb.textContent='dalej →';
+    nb.className='note-btn';
+    nb.onclick=()=>{
+      ns.classList.remove('show');
+      running=true;phaseStart=null;
+      raf=requestAnimationFrame(tick);
+    };
+  }
+  ns.classList.add('show');
+}
+
+function tick(ts){
+  if(!phaseStart)phaseStart=ts;
+  const el=(ts-phaseStart)/1000,dur=PHASES[phase].dur,t=Math.min(el/dur,1);
+  const f=CORNERS[phase],to=CORNERS[(phase+1)%4],pos=lerp(t,f,to);
+  document.getElementById('count').textContent=Math.max(Math.ceil(dur-el),1);
+  drawBox(pos.x,pos.y,t,phase);
+  if(t>=1){
+    phase++;phaseStart=null;
+    if(phase>=4){
+      phase=0;round++;updateDots(round);
+      drawBox(CORNERS[0].x,CORNERS[0].y,0,-1);
+      setLabels(-1);
+      document.getElementById('phaseWord').textContent='';
+      document.getElementById('count').textContent='4';
+      running=false;cancelAnimationFrame(raf);
+      showNote(round);return;
+    }
+    document.getElementById('phaseWord').textContent=PHASES[phase].name;
+    setLabels(phase);
+  }
+  raf=requestAnimationFrame(tick);
+}
+
+function startBreath(){
+  running=true;phase=0;round=0;phaseStart=null;
+  updateDots(0);
+  document.getElementById('phaseWord').textContent=PHASES[0].name;
+  setLabels(0);
+  document.getElementById('btn').textContent='stop';
+  raf=requestAnimationFrame(tick);
+}
+
+function stopBreath(){
+  running=false;cancelAnimationFrame(raf);
+  document.getElementById('btn').textContent='start';
+  document.getElementById('phaseWord').textContent='';
+  document.getElementById('count').textContent='4';
+  setLabels(-1);updateDots(0);
+  drawBox(CORNERS[0].x,CORNERS[0].y,0,-1);
+}
+
+drawBox(CORNERS[0].x,CORNERS[0].y,0,-1);
+
+document.getElementById('btn').addEventListener('click',()=>running?stopBreath():startBreath());
+document.getElementById('restartBtn').addEventListener('click',()=>{
+  document.getElementById('finalScreen').classList.remove('show');
+  stopBreath();
+});
+</script>
+</body>
+</html>
